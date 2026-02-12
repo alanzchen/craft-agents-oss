@@ -81,6 +81,20 @@ bun install
 bun run electron:start
 ```
 
+### Web Viewer (Local Browser Access)
+
+You can run the session viewer as a local web app for access from any browser on your network:
+
+```bash
+bun run viewer:web
+```
+
+Then open `http://<your-mac-ip>:4174/s/`. The server binds to `0.0.0.0` by default.
+Override with `CRAFT_WEB_HOST` or `CRAFT_WEB_PORT` if you want to restrict access.
+
+> **Note:** The viewer reads sessions from your local Craft Agent workspace. Launch the
+> desktop app once to initialize your workspace before starting the web server.
+
 ## Features
 
 - **Multi-Session Inbox**: Desktop app with session management, status workflow, and flagging
