@@ -13,6 +13,7 @@ setBundledAssetsRoot(resolve(VIEWER_ROOT, '../electron'))
 ensureConfigDir()
 
 const port = Number(process.env.PORT ?? process.env.CRAFT_WEB_PORT ?? 4174)
+// Default to all interfaces for LAN access; set CRAFT_WEB_HOST=127.0.0.1 to restrict exposure.
 const hostname = process.env.CRAFT_WEB_HOST ?? '0.0.0.0'
 
 function jsonResponse(data: unknown, status = 200): Response {

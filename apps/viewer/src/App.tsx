@@ -107,7 +107,19 @@ export function App() {
 
       try {
         const response = await fetch('/s/api/sessions')
-        const payload = (await response.json().catch(() => null)) as LocalSessionsResponse | null
+        let payload: LocalSessionsResponse | null = null
+
+        try {
+          payload = await response.json() as LocalSessionsResponse
+        } catch (parseError) {
+          if (!isCancelled) {
+            console.error('Failed to parse local sessions response:', parseError)
+            setLocalSessionsError('Failed to parse local sessions response')
+            setLocalSessions([])
+            setLocalWorkspaceName(undefined)
+          }
+          return
+        }
 
         if (!response.ok) {
           if (!isCancelled) {
