@@ -26,16 +26,16 @@ function jsonResponse(data: unknown, status = 200): Response {
   })
 }
 
-function resolveWorkspace(searchParams: URLSearchParams): { workspace?: Workspace; error?: string } {
+function resolveWorkspace(searchParams: URLSearchParams): { workspace?: Workspace; error?: string; status?: number } {
   const config = loadStoredConfig()
   if (!config) {
-    return { error: 'No workspace config found. Launch the desktop app once to initialize.' }
+    return { error: 'No workspace config found. Launch the desktop app once to initialize.', status: 500 }
   }
 
   const workspaceParam = searchParams.get('workspace')
   const workspace = workspaceParam ? getWorkspaceByNameOrId(workspaceParam) : getActiveWorkspace()
   if (!workspace) {
-    return { error: 'Workspace not found.' }
+    return { error: 'Workspace not found.', status: 404 }
   }
 
   return { workspace }
@@ -54,9 +54,9 @@ async function handleApi(request: Request): Promise<Response> {
   }
 
   if (pathname === `${API_PREFIX}/sessions`) {
-    const { workspace, error } = resolveWorkspace(url.searchParams)
+    const { workspace, error, status } = resolveWorkspace(url.searchParams)
     if (!workspace) {
-      return jsonResponse({ error, sessions: [] }, 503)
+      return jsonResponse({ error, sessions: [] }, status ?? 500)
     }
 
     return jsonResponse({
@@ -71,9 +71,9 @@ async function handleApi(request: Request): Promise<Response> {
       return jsonResponse({ error: 'Session id required' }, 400)
     }
 
-    const { workspace, error } = resolveWorkspace(url.searchParams)
+    const { workspace, error, status } = resolveWorkspace(url.searchParams)
     if (!workspace) {
-      return jsonResponse({ error }, 503)
+      return jsonResponse({ error }, status ?? 500)
     }
 
     try {

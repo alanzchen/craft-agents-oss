@@ -145,18 +145,26 @@ export function App() {
           return
         }
 
-        if (!isLocalSessionsResponse(payload)) {
+        if (!response.ok) {
           if (!isCancelled) {
-            setLocalSessionsError('Unexpected local sessions response')
+            const errorField = (payload && typeof payload === 'object')
+              ? (payload as Record<string, unknown>).error
+              : undefined
+            const fallbackMessage = response.status === 500
+              ? 'No workspace config found. Launch the desktop app once to initialize.'
+              : response.status === 404
+                ? 'Workspace not found.'
+                : 'Failed to load local sessions'
+            setLocalSessionsError(typeof errorField === 'string' ? errorField : fallbackMessage)
             setLocalSessions([])
             setLocalWorkspaceName(undefined)
           }
           return
         }
 
-        if (!response.ok) {
+        if (!isLocalSessionsResponse(payload)) {
           if (!isCancelled) {
-            setLocalSessionsError(payload.error || 'Failed to load local sessions')
+            setLocalSessionsError('Unexpected local sessions response')
             setLocalSessions([])
             setLocalWorkspaceName(undefined)
           }
