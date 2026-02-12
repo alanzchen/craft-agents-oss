@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'fs'
 import { join, resolve } from 'path'
 import { ensureConfigDir, getActiveWorkspace, getWorkspaceByNameOrId, loadStoredConfig } from '@craft-agent/shared/config'
 import type { Workspace } from '@craft-agent/shared/config'
-import { setBundledAssetsRoot } from '@craft-agent/shared/utils/paths'
+import { setBundledAssetsRoot } from '@craft-agent/shared/utils'
 import { listLocalSessions, loadLocalSession } from './server/session-api'
 
 const VIEWER_ROOT = import.meta.dir
