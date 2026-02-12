@@ -28,7 +28,9 @@ import {
   type FileChange,
 } from '@craft-agent/ui'
 import { SessionUpload } from './components/SessionUpload'
+import { LocalSessionsList } from './components/LocalSessionsList'
 import { Header } from './components/Header'
+import type { LocalSessionsResponse, LocalSessionSummary } from './types/local-sessions'
 
 /** Default session ID for development */
 const DEV_SESSION_ID = 'tz5-13I84pwK_he'
@@ -48,6 +50,30 @@ function getSessionIdFromUrl(): string | null {
   return null
 }
 
+function isLocalSessionSummary(value: unknown): value is LocalSessionSummary {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Record<string, unknown>
+  return typeof data.id === 'string' && typeof data.lastUsedAt === 'number'
+}
+
+function isLocalSessionsResponse(value: unknown): value is LocalSessionsResponse {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Record<string, unknown>
+  if (!Array.isArray(data.sessions) || !data.sessions.every(isLocalSessionSummary)) {
+    return false
+  }
+  if (data.workspace) {
+    const workspace = data.workspace as Record<string, unknown>
+    if (typeof workspace.id !== 'string' || typeof workspace.name !== 'string') {
+      return false
+    }
+  }
+  if (data.error !== undefined && typeof data.error !== 'string') {
+    return false
+  }
+  return true
+}
+
 export function App() {
   const [session, setSession] = useState<StoredSession | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -57,6 +83,10 @@ export function App() {
     // Check system preference on mount
     return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
+  const [localSessions, setLocalSessions] = useState<LocalSessionSummary[]>([])
+  const [localWorkspaceName, setLocalWorkspaceName] = useState<string | undefined>(undefined)
+  const [localSessionsError, setLocalSessionsError] = useState<string | null>(null)
+  const [localSessionsLoading, setLocalSessionsLoading] = useState(false)
 
   // Fetch session from API when we have a session ID
   useEffect(() => {
@@ -89,6 +119,82 @@ export function App() {
 
     fetchSession()
   }, [sessionId])
+
+  // Fetch local sessions list when no session is selected
+  useEffect(() => {
+    if (sessionId || session) return
+
+    let isCancelled = false
+    const fetchLocalSessions = async () => {
+      setLocalSessionsLoading(true)
+      setLocalSessionsError(null)
+
+      try {
+        const response = await fetch('/s/api/sessions')
+        let payload: unknown
+
+        try {
+          payload = await response.json()
+        } catch (parseError) {
+          if (!isCancelled) {
+            console.error('Failed to parse local sessions response:', parseError)
+            setLocalSessionsError('Failed to parse local sessions response')
+            setLocalSessions([])
+            setLocalWorkspaceName(undefined)
+          }
+          return
+        }
+
+        if (!response.ok) {
+          if (!isCancelled) {
+            const errorField = (payload && typeof payload === 'object')
+              ? (payload as Record<string, unknown>).error
+              : undefined
+            const fallbackMessage = response.status === 500
+              ? 'No workspace config found. Launch the desktop app once to initialize.'
+              : response.status === 404
+                ? 'Workspace not found.'
+                : 'Failed to load local sessions'
+            setLocalSessionsError(typeof errorField === 'string' ? errorField : fallbackMessage)
+            setLocalSessions([])
+            setLocalWorkspaceName(undefined)
+          }
+          return
+        }
+
+        if (!isLocalSessionsResponse(payload)) {
+          if (!isCancelled) {
+            setLocalSessionsError('Unexpected local sessions response')
+            setLocalSessions([])
+            setLocalWorkspaceName(undefined)
+          }
+          return
+        }
+
+        if (!isCancelled) {
+          setLocalSessions(payload.sessions ?? [])
+          setLocalWorkspaceName(payload.workspace?.name)
+          setLocalSessionsError(payload.error ?? null)
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Failed to fetch local sessions:', err)
+          setLocalSessionsError('Failed to load local sessions')
+          setLocalSessions([])
+          setLocalWorkspaceName(undefined)
+        }
+      } finally {
+        if (!isCancelled) {
+          setLocalSessionsLoading(false)
+        }
+      }
+    }
+
+    fetchLocalSessions()
+    return () => {
+      isCancelled = true
+    }
+  }, [sessionId, session])
 
   // Handle browser navigation
   useEffect(() => {
@@ -128,6 +234,13 @@ export function App() {
     setError(null)
     // Update URL to root
     window.history.pushState({}, '', '/')
+  }, [])
+
+  const handleLocalSessionSelect = useCallback((id: string) => {
+    setSession(null)
+    setError(null)
+    setSessionId(id)
+    window.history.pushState({}, '', `/s/${id}`)
   }, [])
 
   const toggleTheme = useCallback(() => {
@@ -223,7 +336,16 @@ export function App() {
         />
       ) : (
         <div className="flex-1 flex items-center justify-center p-8">
-          <SessionUpload onSessionLoad={handleSessionLoad} />
+          <div className="flex w-full flex-col items-center">
+            <SessionUpload onSessionLoad={handleSessionLoad} />
+            <LocalSessionsList
+              sessions={localSessions}
+              workspaceName={localWorkspaceName}
+              isLoading={localSessionsLoading}
+              error={localSessionsError}
+              onSelect={handleLocalSessionSelect}
+            />
+          </div>
         </div>
       )}
 
