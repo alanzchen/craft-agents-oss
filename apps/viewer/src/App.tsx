@@ -50,6 +50,30 @@ function getSessionIdFromUrl(): string | null {
   return null
 }
 
+function isLocalSessionSummary(value: unknown): value is LocalSessionSummary {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Record<string, unknown>
+  return typeof data.id === 'string' && typeof data.lastUsedAt === 'number'
+}
+
+function isLocalSessionsResponse(value: unknown): value is LocalSessionsResponse {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Record<string, unknown>
+  if (!Array.isArray(data.sessions) || !data.sessions.every(isLocalSessionSummary)) {
+    return false
+  }
+  if (data.workspace) {
+    const workspace = data.workspace as Record<string, unknown>
+    if (typeof workspace.id !== 'string' || typeof workspace.name !== 'string') {
+      return false
+    }
+  }
+  if (data.error !== undefined && typeof data.error !== 'string') {
+    return false
+  }
+  return true
+}
+
 export function App() {
   const [session, setSession] = useState<StoredSession | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -107,10 +131,10 @@ export function App() {
 
       try {
         const response = await fetch('/s/api/sessions')
-        let payload: LocalSessionsResponse | null = null
+        let payload: unknown
 
         try {
-          payload = await response.json() as LocalSessionsResponse
+          payload = await response.json()
         } catch (parseError) {
           if (!isCancelled) {
             console.error('Failed to parse local sessions response:', parseError)
@@ -121,9 +145,18 @@ export function App() {
           return
         }
 
+        if (!isLocalSessionsResponse(payload)) {
+          if (!isCancelled) {
+            setLocalSessionsError('Unexpected local sessions response')
+            setLocalSessions([])
+            setLocalWorkspaceName(undefined)
+          }
+          return
+        }
+
         if (!response.ok) {
           if (!isCancelled) {
-            setLocalSessionsError(payload?.error || 'Failed to load local sessions')
+            setLocalSessionsError(payload.error || 'Failed to load local sessions')
             setLocalSessions([])
             setLocalWorkspaceName(undefined)
           }
@@ -131,9 +164,9 @@ export function App() {
         }
 
         if (!isCancelled) {
-          setLocalSessions(payload?.sessions ?? [])
-          setLocalWorkspaceName(payload?.workspace?.name)
-          setLocalSessionsError(payload?.error ?? null)
+          setLocalSessions(payload.sessions ?? [])
+          setLocalWorkspaceName(payload.workspace?.name)
+          setLocalSessionsError(payload.error ?? null)
         }
       } catch (err) {
         if (!isCancelled) {

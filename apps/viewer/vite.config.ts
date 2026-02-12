@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
 
-const apiTarget = process.env.CRAFT_VIEWER_API_URL || 'https://agents.craft.do'
+const apiTarget = process.env.CRAFT_WEB_API_URL || process.env.CRAFT_VIEWER_API_URL || 'https://agents.craft.do'
 const apiSecure = apiTarget.startsWith('https://')
 
 // https://vitejs.dev/config/

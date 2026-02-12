@@ -89,8 +89,9 @@ You can run the session viewer as a local web app for access from any browser on
 bun run viewer:web
 ```
 
-Then open `http://<your-mac-ip>:4174/s/`. The server binds to `0.0.0.0` by default.
-Override with `CRAFT_WEB_HOST` or `CRAFT_WEB_PORT` if you want to restrict access.
+Then open `http://127.0.0.1:4174/s/`. To access remotely on your LAN, start the server with
+`CRAFT_WEB_HOST=0.0.0.0` (and optionally `CRAFT_WEB_PORT=XXXX`), then open
+`http://<your-mac-ip>:4174/s/`.
 
 > **Note:** The viewer reads sessions from your local Craft Agent workspace. Launch the
 > desktop app once to initialize your workspace before starting the web server.
